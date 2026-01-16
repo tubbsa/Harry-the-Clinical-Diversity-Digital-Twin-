@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
+
+# CatBoost / ML artifacts
+catboost_info/
+*.cbm
+*.pkl
+*.joblib
+
+# Data
+data/
+*.csv
+*.xlsx
+*.parquet
+
+# Logs
+*.log
+
+
+

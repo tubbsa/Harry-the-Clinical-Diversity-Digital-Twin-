@@ -1,0 +1,64 @@
+# ============================================================
+# payload_builder.py — Convert Streamlit form output into
+# model-ready payload for predictor.py
+# ============================================================
+
+import pandas as pd
+
+
+def build_payload(inputs: dict) -> pd.DataFrame:
+    """
+    Convert the dictionary returned by render_form_and_collect_inputs()
+    into a clean DataFrame row aligned with CAT_COLS + NUM_COLS for the model.
+    """
+
+    # ------------------------------------------------------------
+    # 1. Convert list selections to readable strings
+    # ------------------------------------------------------------
+    inclusion_text   = "; ".join(inputs.get("inclusion_sel", []))
+    exclusion_text   = "; ".join(inputs.get("exclusion_sel", []))
+    condition_text   = "; ".join(inputs.get("condition_sel", []))
+    intervention_text = "; ".join(inputs.get("intervention_sel", []))
+    primary_text     = "; ".join(inputs.get("primary_sel", []))
+    secondary_text   = "; ".join(inputs.get("secondary_sel", []))
+
+    # ------------------------------------------------------------
+    # 2. Merge all textual fields into one “mega text” for MiniLM
+    # ------------------------------------------------------------
+    combined_text = " | ".join(filter(None, [
+        condition_text,
+        intervention_text,
+        primary_text,
+        secondary_text,
+        inclusion_text,
+        exclusion_text,
+    ]))
+
+    # ------------------------------------------------------------
+    # 3. Build the core payload (categorical + numeric)
+    # ------------------------------------------------------------
+    row = {
+        # Text field for embedding
+        "text": combined_text,
+
+        # Categorical fields
+        "eligibility_sex": inputs.get("eligibility_sex", "Unknown"),
+        "sponsor": inputs.get("sponsor", "Unknown"),
+        "collaborators": inputs.get("collaborators", "Unknown"),
+        "phases": inputs.get("phases", "Unknown"),
+        "funder_type": inputs.get("funder_type", "Unknown"),
+        "study_type": inputs.get("study_type", "Unknown"),
+        "allocation": inputs.get("allocation", "Unknown"),
+        "intervention_model": inputs.get("intervention_model", "Unknown"),
+        "masking": inputs.get("masking", "Unknown"),
+        "primary_purpose": inputs.get("primary_purpose", "Unknown"),
+
+        # Numeric fields
+        "min_age": inputs.get("min_age", 0),
+        "max_age": inputs.get("max_age", 120),
+    }
+
+    # ------------------------------------------------------------
+    # 4. Return a SINGLE-ROW DataFrame for model consumption
+    # ------------------------------------------------------------
+    return pd.DataFrame([row])
