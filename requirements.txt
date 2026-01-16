@@ -17,3 +17,6 @@ reportlab>=4.0
 pdfkit
 jinja2
 joblib
+sentence-transformers>=2.2
+transformers>=4.38
+torch>=2.2
