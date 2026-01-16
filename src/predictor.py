@@ -2,6 +2,8 @@
 # PATHS — DEPLOYMENT-SAFE (relative to repo root)
 # ------------------------------------------------------------
 from pathlib import Path
+import os
+
 
 # src/predictor.py → repo root = parents[1]
 REPO_ROOT = Path(__file__).resolve().parents[1]
