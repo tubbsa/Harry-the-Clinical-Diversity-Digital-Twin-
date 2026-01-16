@@ -1,43 +1,48 @@
-# ============================================================
-# predictor.py — Harry the Clinical Trial Diversity Digital Twin
-# FINAL VERSION — MiniLM EMBEDDINGS + TABULAR + SOFT OOD
-# ============================================================
-
-import os
-import numpy as np
-import pickle
-from typing import Dict, Any
-
-from catboost import CatBoostRegressor
-from sentence_transformers import SentenceTransformer
-
-from src.schema import SCHEMA_VERSION, coerce_demo_keys
-
-
 # ------------------------------------------------------------
-# PATHS — MATCH YOUR digital_twin/model DIRECTORY
+# PATHS — DEPLOYMENT-SAFE (relative to repo root)
 # ------------------------------------------------------------
-BASE_DIR = "/Users/abigailtubbs/Downloads/digital_twin"
-MODEL_DIR = os.path.join(BASE_DIR, "model")
+from pathlib import Path
 
-MODEL_PATH         = os.path.join(MODEL_DIR, "cb_model_multituned.cbm")
-ENCODER_PATH       = os.path.join(MODEL_DIR, "encoder.pkl")
-CAT_COLS_PATH      = os.path.join(MODEL_DIR, "CAT_COLS.pkl")
-NUM_COLS_PATH      = os.path.join(MODEL_DIR, "NUM_COLS.pkl")
-TARGET_COLS_PATH   = os.path.join(MODEL_DIR, "TARGET_COLS.pkl")
-FEATURE_NAMES_PATH = os.path.join(MODEL_DIR, "FEATURE_NAMES.pkl")
+# src/predictor.py → repo root = parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[1]
+MODEL_DIR = REPO_ROOT / "model"
 
-HURDLE_CLF_PATH    = os.path.join(MODEL_DIR, "hurdle_clf.pkl")
-HURDLE_REG_PATH    = os.path.join(MODEL_DIR, "hurdle_reg.pkl")
+MODEL_PATH         = MODEL_DIR / "cb_model_multituned.cbm"
+ENCODER_PATH       = MODEL_DIR / "encoder.pkl"
+CAT_COLS_PATH      = MODEL_DIR / "CAT_COLS.pkl"
+NUM_COLS_PATH      = MODEL_DIR / "NUM_COLS.pkl"
+TARGET_COLS_PATH   = MODEL_DIR / "TARGET_COLS.pkl"
+FEATURE_NAMES_PATH = MODEL_DIR / "FEATURE_NAMES.pkl"
 
-
-
+HURDLE_CLF_PATH    = MODEL_DIR / "hurdle_clf.pkl"
+HURDLE_REG_PATH    = MODEL_DIR / "hurdle_reg.pkl"
 
 # ------------------------------------------------------------
 # LOAD MODELS & ARTIFACTS (ON IMPORT)
 # ------------------------------------------------------------
+def _require_file(path: Path, label: str) -> None:
+    if not path.exists():
+        raise FileNotFoundError(
+            f"Missing required artifact '{label}' at: {path}. "
+            "Ensure model artifacts are committed to the repository."
+        )
+    if path.is_file() and path.stat().st_size < 16:
+        raise RuntimeError(
+            f"Artifact '{label}' looks too small/corrupt: {path} ({path.stat().st_size} bytes)"
+        )
+
+# Helpful in Streamlit Cloud logs
+print(f"[predictor] CWD={os.getcwd()}")
+print(f"[predictor] REPO_ROOT={REPO_ROOT}")
+print(f"[predictor] MODEL_DIR={MODEL_DIR}")
+
+_require_file(MODEL_PATH, "cb_model_multituned.cbm")
+print(f"[predictor] MODEL_PATH={MODEL_PATH} (bytes={MODEL_PATH.stat().st_size})")
+
 model = CatBoostRegressor()
-model.load_model(MODEL_PATH)
+model.load_model(str(MODEL_PATH))  # IMPORTANT: CatBoost expects a string path reliably
+
+
 
 with open(ENCODER_PATH, "rb") as f:
     encoder = pickle.load(f)
