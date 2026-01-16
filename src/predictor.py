@@ -1,9 +1,20 @@
 # ------------------------------------------------------------
 # PATHS — DEPLOYMENT-SAFE (relative to repo root)
 # ------------------------------------------------------------
-from pathlib import Path
-from catboost import CatBoostRegressor
 import os
+import pickle
+from pathlib import Path
+from typing import Any, Dict
+
+import numpy as np
+from catboost import CatBoostRegressor
+from sentence_transformers import SentenceTransformer
+
+# Allow both package import (src.predictor) and direct local import
+try:
+    from .schema import SCHEMA_VERSION, coerce_demo_keys
+except ImportError:  # pragma: no cover
+    from schema import SCHEMA_VERSION, coerce_demo_keys
 
 
 # src/predictor.py → repo root = parents[1]
@@ -20,6 +31,7 @@ FEATURE_NAMES_PATH = MODEL_DIR / "FEATURE_NAMES.pkl"
 HURDLE_CLF_PATH    = MODEL_DIR / "hurdle_clf.pkl"
 HURDLE_REG_PATH    = MODEL_DIR / "hurdle_reg.pkl"
 
+
 # ------------------------------------------------------------
 # LOAD MODELS & ARTIFACTS (ON IMPORT)
 # ------------------------------------------------------------
@@ -34,6 +46,7 @@ def _require_file(path: Path, label: str) -> None:
             f"Artifact '{label}' looks too small/corrupt: {path} ({path.stat().st_size} bytes)"
         )
 
+
 # Helpful in Streamlit Cloud logs
 print(f"[predictor] CWD={os.getcwd()}")
 print(f"[predictor] REPO_ROOT={REPO_ROOT}")
@@ -44,7 +57,6 @@ print(f"[predictor] MODEL_PATH={MODEL_PATH} (bytes={MODEL_PATH.stat().st_size})"
 
 model = CatBoostRegressor()
 model.load_model(str(MODEL_PATH))  # IMPORTANT: CatBoost expects a string path reliably
-
 
 
 with open(ENCODER_PATH, "rb") as f:
@@ -129,8 +141,6 @@ def check_ood(x_vec: np.ndarray):
     return is_ood, z_max
 
 
-
-
 # ============================================================
 # MAIN ENTRYPOINT
 # ============================================================
@@ -166,8 +176,6 @@ def predict_proportions(payload: Dict[str, Any]) -> Dict[str, Any]:
     # -----------------------
     is_ood, z_score = check_ood(X)
 
-
-
     # -----------------------
     # 6. BASE MODEL PREDICTION
     # -----------------------
@@ -176,6 +184,28 @@ def predict_proportions(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     # -----------------------
     # 7. HURDLE MODELS (RARE TARGETS)
+    # -----------------------
+    for label, clf in hurdle_clf.items():
+        present = clf.predict(X)[0]
+        if present == 0:
+            preds[label] = 0.0
+        else:
+            preds[label] = float(hurdle_reg[label].predict(X)[0])
+
+    # --------------------------------------------------------
+    # Canonicalize keys for UI / scoring
+    # --------------------------------------------------------
+    preds_frac = coerce_demo_keys(preds)
+    for k in ["aian_pct", "age65_pct"]:
+        preds_frac.setdefault(k, preds.get(k, 0.0))
+
+    return {
+        "unreliable_projection": bool(is_ood),
+        "ood_score": float(z_score),
+        "preds": preds_frac,
+        "_schema": SCHEMA_VERSION,
+    }
+
     # -----------------------
     for label, clf in hurdle_clf.items():
         present = clf.predict(X)[0]
