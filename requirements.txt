@@ -1,5 +1,5 @@
 # ============================================================
-# requirements.txt   (Apple Silicon / M1 safe)
+# requirements.txt
 # ============================================================
 pandas>=2.0
 numpy>=1.24
@@ -14,9 +14,10 @@ simpful>=2.11.0
 pydantic>=2.5
 pytest>=7.4
 reportlab>=4.0
-pdfkit
 jinja2
 joblib
+
+# Text embedding / transformer stack
 sentence-transformers>=2.2
 transformers>=4.38
 torch>=2.2
