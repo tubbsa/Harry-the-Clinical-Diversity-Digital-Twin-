@@ -2,6 +2,7 @@
 # PATHS — DEPLOYMENT-SAFE (relative to repo root)
 # ------------------------------------------------------------
 from pathlib import Path
+from catboost import CatBoostRegressor
 import os
 
 
